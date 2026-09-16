@@ -46,7 +46,7 @@ ever talks to one origin and there is nothing to configure for CORS in dev.
 **Sign in with:**
 
 ```
-Email:    alex@workflow.dev
+Email:    sanjoy@workflow.dev
 Password: Password@123
 ```
 
