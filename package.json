@@ -1,0 +1,18 @@
+{
+  "name": "workflow-mern",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workflow - a MERN issue tracker with teams, issues, sub-issues, comments and activity",
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "seed": "npm --prefix backend run seed",
+    "server": "npm --prefix backend run dev",
+    "client": "npm --prefix frontend run dev",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run server\" \"npm run client\"",
+    "test": "npm --prefix backend test",
+    "build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
