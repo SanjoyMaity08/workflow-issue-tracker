@@ -1,0 +1,83 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useOutletContext, useParams } from 'react-router-dom';
+import api from '../api/client.js';
+import IssueCard from '../components/IssueCard.jsx';
+import { BOARD_COLUMNS, statusMeta } from '../constants.js';
+import { StatusIcon } from '../components/Icons.jsx';
+
+const BoardPage = () => {
+  const { key } = useParams();
+  const { teams, registerCreateHandler } = useOutletContext();
+
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const team = useMemo(
+    () => teams.find((t) => t.key === key?.toUpperCase()),
+    [teams, key]
+  );
+
+  const load = async (teamId) => {
+    setLoading(true);
+    try {
+      const data = await api.getIssuesByTeam(teamId);
+      // Only top level issues belong on the board; sub-issues live on their parent.
+      setIssues(data.issues.filter((i) => !i.parentIssue));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (team?._id) load(team._id);
+  }, [team?._id]);
+
+  // Hand the board's team and refresh function to the layout so the "+" button
+  // in the top bar creates into this team and the new card shows up at once.
+  useEffect(() => {
+    if (!team) return undefined;
+    registerCreateHandler({
+      team,
+      onCreated: () => load(team._id),
+    });
+    return () => registerCreateHandler(null);
+  }, [team?._id]);
+
+  if (!team) return <div className="empty">That team does not exist.</div>;
+  if (loading) return <div className="empty">Loading the board...</div>;
+  if (error) return <div className="empty">{error}</div>;
+
+  return (
+    <div className="board">
+      {BOARD_COLUMNS.map((status) => {
+        const column = issues.filter((i) => i.status === status);
+        const meta = statusMeta(status);
+
+        return (
+          <section key={status} className="column">
+            <header className="column__head">
+              <StatusIcon status={status} />
+              <h2>{meta.label}</h2>
+              <span className="column__count">{column.length}</span>
+            </header>
+
+            <div className="column__body">
+              {column.map((issue) => (
+                <IssueCard key={issue._id} issue={issue} />
+              ))}
+              {column.length === 0 && (
+                <p className="column__empty">Nothing here yet.</p>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+};
+
+export default BoardPage;
