@@ -1,0 +1,23 @@
+import Activity from '../models/Activity.js';
+import Issue from '../models/Issue.js';
+
+/**
+ * GET /api/activities/:identifier - the activity feed on the issue detail page.
+ */
+export const getActivitiesForIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findOne({ identifier: req.params.identifier });
+    if (!issue) {
+      return res.status(404).json({ message: 'Issue not found' });
+    }
+
+    const activities = await Activity.find({ issue: issue._id })
+      .populate('user', 'name email avatar')
+      .sort({ createdAt: 1 });
+
+    res.json({ activities });
+  } catch (error) {
+    console.error('Get activities error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
