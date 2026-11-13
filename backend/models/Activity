@@ -1,0 +1,33 @@
+import mongoose from 'mongoose';
+
+const activitySchema = new mongoose.Schema(
+  {
+    issue: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Issue',
+      required: true,
+      index: true,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    /**
+     * e.g. "created", "updated_status", "updated_priority", "deleted".
+     */
+    action: {
+      type: String,
+      required: true,
+    },
+    changes: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+  },
+  { timestamps: true }
+);
+
+const Activity = mongoose.model('Activity', activitySchema);
+
+export default Activity;
