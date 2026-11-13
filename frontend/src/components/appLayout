@@ -1,0 +1,116 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import api from '../api/client.js';
+import Sidebar from './Sidebar.jsx';
+import CreateIssueModal from './CreateIssueModal.jsx';
+
+/**
+ * Shell around every signed-in screen: sidebar, top bar with the "+" button,
+ * and the create-issue modal. Child routes register what should happen after
+ * an issue is created so the view they own refreshes itself.
+ */
+const AppLayout = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [teams, setTeams] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handlerRef = useRef(null);
+  const [handlerTeam, setHandlerTeam] = useState(null);
+
+  const registerCreateHandler = useCallback((handler) => {
+    handlerRef.current = handler;
+    setHandlerTeam(handler?.team || null);
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      const [teamData, userData] = await Promise.all([api.getTeams(), api.getUsers()]);
+      setTeams(teamData.teams);
+      setUsers(userData.users);
+      setReady(true);
+
+      // Land on the first team's board when the app opens at the root.
+      if (location.pathname === '/' && teamData.teams.length > 0) {
+        navigate(`/team/${teamData.teams[0].key}`, { replace: true });
+      }
+    };
+
+    load();
+  }, []);
+
+  // "c" opens the composer, the way keyboard-first trackers behave.
+  useEffect(() => {
+    const onKey = (e) => {
+      const typing = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+      if (!typing && e.key.toLowerCase() === 'c' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setModalOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  const createIssue = async (payload) => {
+    const data = await api.createIssue(payload);
+    if (handlerRef.current?.onCreated) {
+      await handlerRef.current.onCreated(data.issue);
+    }
+    return data.issue;
+  };
+
+  if (!ready) return <div className="empty empty--full">Connecting to Workflow...</div>;
+
+  const activeTeam = handlerTeam;
+
+  return (
+    <div className="shell">
+      <Sidebar teams={teams} />
+
+      <div className="shell__main">
+        <header className="topbar">
+          <div className="topbar__title">
+            {activeTeam ? (
+              <>
+                <span className="team-badge" style={{ background: activeTeam.color }}>
+                  {activeTeam.key.charAt(0)}
+                </span>
+                {activeTeam.name}
+              </>
+            ) : (
+              'Workflow'
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="btn btn--primary btn--sm"
+            onClick={() => setModalOpen(true)}
+            title="Create issue (c)"
+          >
+            + New issue
+          </button>
+        </header>
+
+        <main className="shell__content">
+          <Outlet context={{ teams, users, registerCreateHandler }} />
+        </main>
+      </div>
+
+      <CreateIssueModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        teams={teams}
+        users={users}
+        team={activeTeam}
+        onCreate={createIssue}
+      />
+    </div>
+  );
+};
+
+export default AppLayout;
