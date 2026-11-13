@@ -1,0 +1,47 @@
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+
+/**
+ * Protect routes with a Bearer token.
+ *
+ * Every failure path answers 401 with a { message } body, which is what the
+ * "should fail to create an issue when user is not authenticated" test asserts.
+ */
+export const protect = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Not authorized, no token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token || token === 'undefined' || token === 'null') {
+      return res.status(401).json({ message: 'Not authorized, no token provided' });
+    }
+
+    const secret = process.env.JWT_SECRET || 'workflow_super_secret_change_me';
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch (err) {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    const user = await User.findById(decoded.id).select('-password');
+
+    if (!user) {
+      return res.status(401).json({ message: 'Not authorized, user no longer exists' });
+    }
+
+    req.user = user;
+    return next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({ message: 'Not authorized' });
+  }
+};
+
+export default protect;
