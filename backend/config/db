@@ -1,0 +1,18 @@
+import mongoose from 'mongoose';
+
+/**
+ * Connect to MongoDB. The URI comes from MONGO_URI, falling back to a local
+ * database so the project runs out of the box with a local mongod.
+ */
+const connectDB = async (uri = process.env.MONGO_URI) => {
+  const mongoUri = uri || 'mongodb://127.0.0.1:27017/WorkflowDB';
+
+  mongoose.set('strictQuery', true);
+
+  const conn = await mongoose.connect(mongoUri);
+  const dbName = conn.connection.name;
+  console.log(`Connected to MongoDB with Mongoose (Database: ${dbName})`);
+  return conn;
+};
+
+export default connectDB;
